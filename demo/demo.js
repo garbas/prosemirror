@@ -1,6 +1,9 @@
+import {MenuItem} from "../src/menu/menu"
 import {ProseMirror} from "../src/edit/main"
-import {Pos, Node} from "../src/model"
+import {elt} from "../src/dom"
 import {fromDOM} from "../src/convert/from_dom"
+import {getItems, separatorItem, ImageItem, IconItem} from "../src/menu/items"
+import {style, Pos, Node, Span} from "../src/model"
 
 import "../src/inputrules/autoinput"
 import "../src/menu/inlinemenu"
@@ -39,13 +42,52 @@ class DummyServer {
   }
 }
 
+
+class CustomImageItem extends IconItem {
+  constructor() {
+    super("image", "Insert image")
+  }
+  apply(pm) {
+
+    let modal = $(
+      '<div class="pat-modal">' +
+      '  <h3>Upload Image<h3>' +
+      '  <div class="pat-upload" data-pat-upload="url: https://example.org/upload; label: Drop files here to upload or click to browse.; trigger: button" />' +
+      '  <button>Insert animal</button>' +
+      '</div>'
+    ).appendTo('body');
+
+    $('button', modal).on('click', function() {
+        let image_src = 'http://lorempixel.com/g/200/200/animals/'
+        let sel = pm.selection, tr = pm.tr
+        tr.delete(sel.from, sel.to)
+        let attrs = {src: image_src, alt: 'Kitty', title: 'WooW!'}
+        pm.apply(tr.insertInline(sel.from, new Span("image", attrs, null, null)))
+        $(this).parents('.pat-modal').data('pattern-modal').destroy()
+    })
+
+    window.patterns.scan(modal);
+  }
+}
+
 function makeEditor(where, collab) {
   return new ProseMirror({
     place: document.querySelector(where),
     autoInput: true,
-    inlineMenu: true,
-    menuBar: {float: true},
-    buttonMenu: {followCursor: true},
+    menuBar: {
+      float: true, 
+      items: [
+        ...getItems("inline").filter(function(item) {
+          if (!(item instanceof ImageItem)) {
+            return true;
+          }
+        }), separatorItem,
+        (new CustomImageItem), separatorItem, 
+        ...getItems("block"), ...getItems("history")
+      ]
+    },
+    inlineMenu: false,
+    buttonMenu: false,
     doc: doc,
     collab: collab
   })
